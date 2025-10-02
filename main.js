@@ -4,7 +4,9 @@ const fs = require('fs');
 program
     .requiredOption('-i, --input <type>', 'Path to the input JSON file')
     .option('-o, --output <type>', 'Path to the output file')
-    .option('-d, --display', 'Display result in the console');
+    .option('-d, --display', 'Display result in the console')
+    .option('-h, --humidity', 'Display humidity in the afternoon')
+    .option('-r, --rainfall <value>', 'Filter by rainfall amount (show records with more than specified)');
 
 program.parse();
 
@@ -23,16 +25,38 @@ if (!fs.existsSync(options.input)) {
 console.log('Program started successfully.');
 console.log('Input file:', options.input);
 
-let result = `(Це майбутній результат обробки файлу ${options.input})`;
+const fileContent = fs.readFileSync(options.input, 'utf-8');
+const data = JSON.parse(fileContent);
+let processedData = data;
+
+if (options.rainfall) {
+    const minRainfall = parseFloat(options.rainfall);
+    processedData = processedData.filter(record => record.Rainfall >= minRainfall);
+}
+
+const resultLines = processedData.map(record => {
+    const parts = [
+        record.Rainfall,
+        record.Pressure3pm
+    ];
+
+    if (options.humidity) {
+        parts.push(record.Humidity3pm);
+    }
+
+    return parts.join(' ');
+});
+
+const outputString = resultLines.join('\n');
 
 if (options.output) {
+    fs.writeFileSync(options.output, outputString);
     console.log(`Result will be saved to: ${options.output}`);
-    // У Частині 2 тут буде fs.writeFileSync(options.output, result);
 }
 
 if (options.display) {
     console.log('Displaying result in console:');
-    console.log(result);
+    console.log(outputString);
 }
 
 console.log('Program finished.');
